@@ -11,6 +11,33 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// SSE Support
+app.get("/api/polls/sse", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const sendUpdates = () => {
+    // Get the updated poll data from the database
+    pool.query("SELECT * FROM polls", (error, results) => {
+      if (error) {
+        console.log(error);
+        return;
+      }
+      // Send the updated data to the client
+      res.write(`data: ${JSON.stringify(results.rows)}\n\n`);
+    });
+  };
+
+  // Send updates every second
+  const intervalId = setInterval(sendUpdates, 1000);
+
+  // Stop sending updates when the client disconnects
+  req.on("close", () => {
+    clearInterval(intervalId);
+  });
+});
+
 app.get("/", (req, res) => {
   res.send("Hello world");
 });
