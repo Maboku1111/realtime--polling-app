@@ -1,15 +1,28 @@
 const express = require("express");
 const cors = require("cors");
-const dbConfig = require("../config/db.config");
-const { Pool } = require("pg");
-const AWS = require("aws-sdk");
+const { Client } = require("pg");
 
 const PORT = process.env.PORT || 5000;
-const pool = new Pool(dbConfig);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const client = new Client({
+  host: "localhost",
+  port: 5432,
+  user: "postgres",
+  password: "MahRei@43",
+  database: "pollApp",
+});
+client
+  .connect()
+  .then(() => {
+    console.log("Connected to PostgreSQL database");
+  })
+  .catch((err) => {
+    console.error("Error connecting to PostgreSQL database", err);
+  });
 
 // SSE Support
 app.get("/api/polls/sse", (req, res) => {
@@ -19,7 +32,7 @@ app.get("/api/polls/sse", (req, res) => {
 
   const sendUpdates = () => {
     // Get the updated poll data from the database
-    pool.query("SELECT * FROM polls", (error, results) => {
+    client.query("SELECT * FROM polls", (error, results) => {
       if (error) {
         console.log(error);
         return;
@@ -44,9 +57,9 @@ app.get("/", (req, res) => {
 
 // Endpoints for Poll data
 app.get("/api/polls", (req, res) => {
-  /* I have connected Amazon Aurora PostgreSQL database with my Express JS API, now query the database to get poll data. */
+  /* I have connected to my PostgreSQL database with my Express JS API, now query the database to get poll data. */
   try {
-    pool.query("SELECT * FROM polls", (error, results) => {
+    client.query("SELECT * FROM polls", (error, results) => {
       if (error) {
         throw error;
       }
@@ -59,11 +72,11 @@ app.get("/api/polls", (req, res) => {
 });
 
 app.post("/api/polls", (req, res) => {
-  // TODO: Handles POST requests for new poll data
+  // TODO: Handles POST requests for new poll data and inserts the data into my table poll with the databse schema of id, title, options (array), created_at, updated_at
   try {
-    pool.query(
-      "INSERT INTO polls (question, options) VALUES ($1, $2)",
-      [req.body.question, req.body.options],
+    client.query(
+      "INSERT INTO polls (title, options) VALUES ($1, $2)",
+      [req.body.title, req.body.options],
       (error, results) => {
         if (error) {
           throw error;
@@ -78,9 +91,9 @@ app.post("/api/polls", (req, res) => {
 });
 
 app.get("/api/polls:id", (req, res) => {
-  // TODO: Handles GET requests for individual poll data
+  // TODO: Handles GET requests for individual poll data by collecting the data from my table poll with the databse schema of id, title, options (array), created_at, updated_at
   try {
-    pool.query(
+    client.query(
       "SELECT * FROM polls WHERE id = $1",
       [req.params.id],
       (error, results) => {
@@ -97,11 +110,11 @@ app.get("/api/polls:id", (req, res) => {
 });
 
 app.put("/api/polls:id", (req, res) => {
-  // TODO: Handles PUT requests for individual poll data
+  // TODO: Handles PUT requests for individual poll data by updating the data in my table poll with the databse schema of id, title, options (array), created_at, updated_at
   try {
-    pool.query(
-      "UPDATE polls SET question = $1, options = $2 WHERE id = $3",
-      [req.body.question, req.body.options, req.params.id],
+    client.query(
+      "UPDATE polls SET title = $1, options = $2 WHERE id = $3",
+      [req.body.title, req.body.options, req.params.id],
       (error, results) => {
         if (error) {
           throw error;
@@ -117,11 +130,11 @@ app.put("/api/polls:id", (req, res) => {
 
 // Endpoint for Votes
 app.post("/api/votes", (req, res) => {
-  // TODO: Handles POST requests for votes
+  // TODO: Handles POST requests for votes and inserts the data into my table votes with the database schema of id, user_id, poll_id, option_index, created_at
   try {
-    pool.query(
-      "INSERT INTO votes (poll_id, option_id) VALUES ($1, $2)",
-      [req.body.poll_id, req.body.option_id],
+    client.query(
+      "INSERT INTO votes (user_id, poll_id, option_index) VALUES ($1, $2, $3)",
+      [req.body.user_id, req.body.poll_id, req.body.option_index],
       (error, results) => {
         if (error) {
           throw error;
@@ -137,9 +150,9 @@ app.post("/api/votes", (req, res) => {
 
 // Endpoints for Discussions
 app.post("/api/discussions", (req, res) => {
-  // TODO: Handles POST requests for discussion messages
+  // TODO: Handles POST requests for discussion messages and inserts the data into my table discussions with the database schema of id, poll_id, user_id, message, created_at
   try {
-    pool.query(
+    client.query(
       "INSERT INTO discussions (poll_id, user_id, message) VALUES ($1, $2, $3)",
       [req.body.poll_id, req.body.user_id, req.body.message],
       (error, results) => {
